@@ -1,5 +1,5 @@
 // components/JobList.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 import { Job, JobFilters } from '@/types';
 import { JobCard } from '@/components/JobCard';
@@ -26,7 +26,8 @@ export const JobList: React.FC = () => {
     showOnlyNew: false,
     search: '',
   });
-  // Using Sonner for toast notifications
+  // Track if initial load has been done
+  const hasInitiallyLoaded = useRef(false);
 
   // Load jobs function - define with useCallback to use in dependency arrays
   const loadJobs = useCallback(async () => {
@@ -105,8 +106,9 @@ export const JobList: React.FC = () => {
     }
   }, [loadJobs, handleSync]);
 
-  // Load jobs on component mount and when filters change
+  // Load jobs when filters change
   useEffect(() => {
+    // Only reload jobs, don't sync with server when filters change
     loadJobs();
   }, [filters, loadJobs]);
 
@@ -122,8 +124,11 @@ export const JobList: React.FC = () => {
     // Initial check
     setIsOnline(navigator.onLine);
 
-    // Auto-sync when app opens
-    handleInitialLoad();
+    // Auto-sync when app opens but ONLY ONCE
+    if (!hasInitiallyLoaded.current) {
+      hasInitiallyLoaded.current = true;
+      handleInitialLoad();
+    }
 
     return () => {
       window.removeEventListener('online', handleOnlineStatusChange);
