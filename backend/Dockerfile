@@ -1,5 +1,5 @@
 # Backend Dockerfile
-FROM python:3.11-slim
+FROM python:3.12
 
 # Set working directory
 WORKDIR /app
@@ -11,14 +11,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install UV
-RUN curl -sSf https://astral.sh/uv/install.sh | bash
-
 # Copy pyproject.toml 
 COPY backend/pyproject.toml ./
 
 # Install dependencies
-RUN /root/.cargo/bin/uv pip install -e .
+RUN pip install -e .
 
 # Install Playwright browsers
 RUN pip install playwright && playwright install chromium

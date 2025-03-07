@@ -46,10 +46,10 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, isOpen, onC
               
               <div className="flex items-center gap-1">
                 <Tag className="h-4 w-4 text-muted-foreground" />
-                <Badge variant={job.category}>{job.category === 'software' ? 'Software' : 'Hardware'}</Badge>
+                <Badge variant="default">{job.category === 'software' ? 'Software' : 'Hardware'}</Badge>
               </div>
               
-              {job.is_new && <Badge variant="new">New</Badge>}
+              {job.is_new && <Badge variant="default">New</Badge>}
             </div>
             
             <div>
