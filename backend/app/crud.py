@@ -79,6 +79,9 @@ def get_jobs_with_pagination(
     page_size: int = 50,
     category: Optional[str] = None
 ) -> PaginatedResponse:
+    """
+    Get paginated jobs with filtering options
+    """
     # Define the base query
     query = db.query(
         DBJob, 
@@ -92,11 +95,21 @@ def get_jobs_with_pagination(
     if category and category != "all":
         query = query.filter(DBJob.category == category)
     
+    # Filter for active jobs only
+    query = query.filter(DBJob.is_active == True)
+    
+    # Log query for debugging
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Retrieving jobs with pagination: page={page}, page_size={page_size}, category={category}")
+    
     # Order by posting date (newest first)
     query = query.order_by(desc(DBJob.posting_date))
     
     # Get total count
     total = query.count()
+    logger.info(f"Total query results before pagination: {total}")
+    
     total_pages = math.ceil(total / page_size)
     
     # Apply pagination
@@ -121,6 +134,8 @@ def get_jobs_with_pagination(
         }
         jobs.append(job_dict)
     
+    logger.info(f"Returning {len(jobs)} jobs in response")
+    
     return PaginatedResponse(
         items=jobs,
         total=total,
@@ -134,6 +149,9 @@ def get_jobs_since_timestamp(
     timestamp: datetime,
     category: Optional[str] = None
 ) -> List[dict]:
+    """
+    Get jobs discovered since a specific timestamp
+    """
     # Define the base query
     query = db.query(
         DBJob, 
@@ -149,11 +167,20 @@ def get_jobs_since_timestamp(
     if category and category != "all":
         query = query.filter(DBJob.category == category)
     
+    # Filter for active jobs only
+    query = query.filter(DBJob.is_active == True)
+    
+    # Log query for debugging
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Retrieving jobs since timestamp: {timestamp}, category={category}")
+    
     # Order by posting date (newest first)
     query = query.order_by(desc(DBJob.posting_date))
     
     # Get results
     results = query.all()
+    logger.info(f"Total query results for since parameter: {len(results)}")
     
     # Process results
     jobs = []
@@ -172,6 +199,8 @@ def get_jobs_since_timestamp(
             "is_active": job.is_active
         }
         jobs.append(job_dict)
+    
+    logger.info(f"Returning {len(jobs)} jobs since {timestamp}")
     
     return jobs
 

@@ -6,6 +6,7 @@ from typing import List, Optional
 from datetime import datetime
 import asyncio
 import os
+import logging
 
 from app.database import get_db, init_db
 from app.models import Job as DBJob, Company as DBCompany, Base
@@ -99,19 +100,32 @@ def read_jobs(
     - **category**: Filter by category (software, hardware, all)
     - **since**: ISO timestamp to get jobs added since a specific time
     """
+    logger = logging.getLogger(__name__)
+    logger.info(f"API request: /jobs with params page={page}, page_size={page_size}, category={category}, since={since}")
+    
     try:
         if since:
             # Try to parse the timestamp
             try:
-                since_timestamp = datetime.fromisoformat(since.replace('Z', '+00:00'))
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid timestamp format")
+                # Handle different timestamp formats
+                if 'Z' in since:
+                    since_timestamp = datetime.fromisoformat(since.replace('Z', '+00:00'))
+                elif 'T' in since and '+' not in since and '-' in since:
+                    since_timestamp = datetime.fromisoformat(since + '+00:00')
+                else:
+                    since_timestamp = datetime.fromisoformat(since)
+                
+                logger.info(f"Parsed timestamp: {since_timestamp}")
+            except ValueError as e:
+                logger.error(f"Invalid timestamp format: {since} - {str(e)}")
+                raise HTTPException(status_code=400, detail=f"Invalid timestamp format: {str(e)}")
             
             # Get jobs since the specified timestamp
             jobs = get_jobs_since_timestamp(db, since_timestamp, category)
             
             # Return as a paginated response
             total = len(jobs)
+            logger.info(f"Returning {total} jobs since {since_timestamp}")
             return PaginatedResponse(
                 items=jobs,
                 total=total,
@@ -121,9 +135,12 @@ def read_jobs(
             )
         else:
             # Get paginated jobs
-            return get_jobs_with_pagination(db, page, page_size, category)
+            result = get_jobs_with_pagination(db, page, page_size, category)
+            logger.info(f"Returning paginated response with {len(result.items)} items")
+            return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error fetching jobs: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.get("/jobs/{job_id}", response_model=Job)
 def read_job(job_id: int, db: Session = Depends(get_db)):
