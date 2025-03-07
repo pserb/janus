@@ -49,7 +49,7 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, isOpen, onC
                 <Badge variant="default">{job.category === 'software' ? 'Software' : 'Hardware'}</Badge>
               </div>
               
-              {job.is_new && <Badge variant="default">New</Badge>}
+              {job.is_new == 1 ? <Badge variant="default">New</Badge> : null}
             </div>
             
             <div>

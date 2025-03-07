@@ -95,10 +95,10 @@ export async function syncJobs(): Promise<{
       };
     }
 
-    // Mark newly fetched jobs as "new"
+    // mark jobs posted in the last week as "new"
     const newJobs = response.items.map(job => ({
       ...job,
-      is_new: 1  // Changed from boolean to number (1) for IndexedDB compatibility
+      is_new: new Date(job.posting_date) > new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000) ? 1 : 0,
     }));
 
     // Save jobs to local database

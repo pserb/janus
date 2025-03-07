@@ -25,7 +25,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onViewDetails }) => {
             </div>
           </div>
           <div className="flex gap-2">
-            {job.is_new && <Badge variant="default">New</Badge>}
+            {job.is_new == 1 ? <Badge variant="default">New</Badge> : null}
             <Badge variant="default">{job.category === 'software' ? 'Software' : 'Hardware'}</Badge>
           </div>
         </div>
