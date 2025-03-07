@@ -1,5 +1,5 @@
 # models.py
-from sqlalchemy import Column, ForeignKey, Integer, String, Text, DateTime, Boolean, JSON
+from sqlalchemy import Column, ForeignKey, Integer, String, Text, DateTime, Boolean, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
@@ -33,10 +33,8 @@ class Job(Base):
     requirements_summary = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
 
-    # Unique constraint on company_id and link
     __table_args__ = (
-        # SQLAlchemy constraint syntax
-        {"UniqueConstraint('company_id', 'link')"},
+        UniqueConstraint('company_id', 'link'),
     )
 
     # Relationship

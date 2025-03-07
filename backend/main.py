@@ -28,6 +28,9 @@ from app.crud import (
 from app.scheduler import ScraperScheduler
 from app.ml.processor import MLProcessor
 
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, status
+
 app = FastAPI(
     title="Janus API",
     description="API for Janus Internship Tracker",
@@ -35,11 +38,12 @@ app = FastAPI(
 )
 
 # CORS middleware to allow cross-origin requests from frontend
+origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify the frontend URL
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -180,6 +184,14 @@ def read_stats(db: Session = Depends(get_db)):
 def health_check():
     """Health check endpoint"""
     return {"status": "ok", "version": "0.1.0"}
+
+security = HTTPBearer()
+
+def verify_admin_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    admin_token = os.getenv("ADMIN_API_TOKEN")
+    if not admin_token or credentials.credentials != admin_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    return credentials.credentials
 
 # Manual scrape trigger endpoint (admin only)
 @app.post("/admin/trigger-scrape")
