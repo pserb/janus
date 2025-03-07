@@ -2,7 +2,7 @@
 
 Janus is a hybrid application designed to help university students find software and hardware engineering internships and entry-level positions by aggregating job listings directly from company career pages.
 
-![Janus Logo](frontend/public/vercel.svg)
+<img src="frontend/public/vercel.svg" alt="Janus Logo" width="100">
 
 ## 🚀 Quick Start
 
