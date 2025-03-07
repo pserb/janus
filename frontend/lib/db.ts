@@ -1,4 +1,4 @@
-// src/lib/db.ts
+// lib/db.ts
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Job, SyncInfo } from '@/types';
 
@@ -36,10 +36,10 @@ export async function getDb() {
         jobStore.createIndex('by-is-new', 'is_new');
 
         // Create sync info store
-        db.createObjectStore('sync_info', { keyPath: 'id' });
-
+        const syncStore = db.createObjectStore('sync_info', { keyPath: 'id' });
+        
         // Initialize sync_info with default value
-        const syncStore = db.transaction('sync_info', 'readwrite').objectStore('sync_info');
+        // Use the existing transaction context instead of creating a new one
         syncStore.put({
           id: 1,
           last_sync_timestamp: new Date(0).toISOString()
@@ -89,7 +89,7 @@ export async function clearJobs(): Promise<void> {
 export async function getSyncInfo(): Promise<SyncInfo> {
   const db = await getDb();
   const syncInfo = await db.get('sync_info', 1);
-  return syncInfo || { last_sync_timestamp: new Date(0).toISOString() };
+  return syncInfo || { id: 1, last_sync_timestamp: new Date(0).toISOString() };
 }
 
 export async function updateSyncTimestamp(timestamp: string): Promise<void> {

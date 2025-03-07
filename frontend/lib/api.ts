@@ -79,7 +79,7 @@ export async function syncJobs(): Promise<{
     // Fetch new jobs since last sync
     const response = await fetchJobs({
       since: last_sync_timestamp,
-      pageSize: 200 // Fetch more jobs when syncing
+      pageSize: 100 // Fetch more jobs when syncing (max allowed by API)
     });
 
     // Return early if no new jobs

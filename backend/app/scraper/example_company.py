@@ -65,7 +65,7 @@ class GoogleScraper(BaseScraper):
     def __init__(self):
         super().__init__(
             company_name="Google",
-            career_page_url="https://careers.google.com/jobs/results/?employment_type=INTERN"
+            career_page_url="https://www.google.com/about/careers/applications/jobs/results/?employment_type=INTERN"
         )
     
     async def scrape(self) -> List[Dict[str, Any]]:
