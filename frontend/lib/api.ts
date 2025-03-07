@@ -1,4 +1,4 @@
-// src/lib/api.ts
+// ib/api.ts
 import axios from 'axios';
 import { Job, PaginatedResponse, JobListingStats } from '@/types';
 import { getSyncInfo, saveJobs, updateSyncTimestamp } from '@/lib/db';
@@ -98,7 +98,7 @@ export async function syncJobs(): Promise<{
     // Mark newly fetched jobs as "new"
     const newJobs = response.items.map(job => ({
       ...job,
-      is_new: true
+      is_new: 1  // Changed from boolean to number (1) for IndexedDB compatibility
     }));
 
     // Save jobs to local database

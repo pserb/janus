@@ -1,5 +1,5 @@
 // components/JobList.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 import { Job, JobFilters } from '@/types';
 import { JobCard } from '@/components/JobCard';
@@ -28,53 +28,8 @@ export const JobList: React.FC = () => {
   });
   // Using Sonner for toast notifications
 
-  // Load jobs on component mount and when filters change
-  useEffect(() => {
-    loadJobs();
-  }, [filters]);
-
-  // Check online status
-  useEffect(() => {
-    const handleOnlineStatusChange = () => {
-      setIsOnline(navigator.onLine);
-    };
-
-    window.addEventListener('online', handleOnlineStatusChange);
-    window.addEventListener('offline', handleOnlineStatusChange);
-
-    // Initial check
-    setIsOnline(navigator.onLine);
-
-    // Auto-sync when app opens
-    handleInitialLoad();
-
-    return () => {
-      window.removeEventListener('online', handleOnlineStatusChange);
-      window.removeEventListener('offline', handleOnlineStatusChange);
-    };
-  }, []);
-
-  // Initial load and sync
-  const handleInitialLoad = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // First load data from local DB
-      await loadJobs();
-      
-      // Then sync with server
-      await handleSync();
-    } catch (err) {
-      console.error('Error during initial load:', err);
-      setError('Failed to initialize the application. Please try refreshing the page.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Load jobs from IndexedDB
-  const loadJobs = async () => {
+  // Load jobs function - define with useCallback to use in dependency arrays
+  const loadJobs = useCallback(async () => {
     setError(null);
     
     try {
@@ -91,10 +46,10 @@ export const JobList: React.FC = () => {
         description: 'There was a problem loading job listings.'
       });
     }
-  };
+  }, [filters]);
 
   // Handle sync with server
-  const handleSync = async () => {
+  const handleSync = useCallback(async () => {
     if (!isOnline) {
       toast.info('Offline Mode', {
         description: 'You are currently offline. Job listings will update when you reconnect.'
@@ -129,7 +84,52 @@ export const JobList: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  };
+  }, [isOnline, loadJobs]);
+
+  // Initial load and sync
+  const handleInitialLoad = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // First load data from local DB
+      await loadJobs();
+      
+      // Then sync with server
+      await handleSync();
+    } catch (err) {
+      console.error('Error during initial load:', err);
+      setError('Failed to initialize the application. Please try refreshing the page.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadJobs, handleSync]);
+
+  // Load jobs on component mount and when filters change
+  useEffect(() => {
+    loadJobs();
+  }, [filters, loadJobs]);
+
+  // Check online status and handle initial load
+  useEffect(() => {
+    const handleOnlineStatusChange = () => {
+      setIsOnline(navigator.onLine);
+    };
+
+    window.addEventListener('online', handleOnlineStatusChange);
+    window.addEventListener('offline', handleOnlineStatusChange);
+
+    // Initial check
+    setIsOnline(navigator.onLine);
+
+    // Auto-sync when app opens
+    handleInitialLoad();
+
+    return () => {
+      window.removeEventListener('online', handleOnlineStatusChange);
+      window.removeEventListener('offline', handleOnlineStatusChange);
+    };
+  }, [handleInitialLoad]);
 
   // Handle filter changes
   const handleFiltersChange = (newFilters: JobFilters) => {

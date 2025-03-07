@@ -1,4 +1,4 @@
-// src/lib/utils.ts
+// lib/utils.ts
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { format, formatDistance } from 'date-fns'

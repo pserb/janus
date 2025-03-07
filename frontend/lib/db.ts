@@ -10,7 +10,7 @@ interface JanusDB extends DBSchema {
       'by-company': number;
       'by-category': string;
       'by-posting-date': string;
-      'by-is-new': boolean;
+      'by-is-new': number;
     };
   };
   sync_info: {
@@ -108,7 +108,7 @@ export async function getJobsByCategory(category: string): Promise<Job[]> {
 
 export async function getNewJobs(): Promise<Job[]> {
   const db = await getDb();
-  return db.getAllFromIndex('jobs', 'by-is-new', true);
+  return db.getAllFromIndex('jobs', 'by-is-new', 1);
 }
 
 export async function getJobsWithFilters({
