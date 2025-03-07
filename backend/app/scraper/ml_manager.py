@@ -1,26 +1,26 @@
-# scraper/manager.py
+# scraper/ml_manager.py
 import asyncio
 import logging
 from datetime import datetime
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any, Type
+from typing import List, Dict, Any, Type, Optional
 from sqlalchemy.exc import IntegrityError
 
+# Import the scrapers
 from app.scraper.base import BaseScraper
 from app.scraper.company_scrapers import AppleScraper
 from app.models import Company, Job
 from app.schemas import JobCreate
 
-# Import the updated ML functions
-from app.ml.summarizer import summarize_job_requirements
-from app.scraper.ml_job_processor import classify_job
+# Import ML processor instead of rule-based processors
+from app.ml.ml_job_processor import process_job_requirements, classify_job
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class ScraperManager:
-    """Manager for all scrapers"""
+class MLScraperManager:
+    """ML-based manager for all scrapers"""
     
     def __init__(self, db: Session):
         self.db = db
@@ -30,8 +30,8 @@ class ScraperManager:
         ]
     
     async def run_all_scrapers(self):
-        """Run all scrapers and store results"""
-        logger.info("Starting scraper manager")
+        """Run all scrapers and store results using ML processing"""
+        logger.info("Starting ML-based scraper manager")
         total_new_jobs = 0
         
         for scraper_class in self.scrapers:
@@ -50,8 +50,8 @@ class ScraperManager:
                 jobs = await scraper.scrape()
                 logger.info(f"Scraper for {company.name} found {len(jobs)} jobs")
                 
-                # Process and store the jobs
-                new_jobs_count = await self._process_jobs(company, jobs)
+                # Process and store the jobs using ML
+                new_jobs_count = await self._process_jobs_with_ml(company, jobs)
                 total_new_jobs += new_jobs_count
                 
                 # Update the company's last scrape timestamp
@@ -63,7 +63,7 @@ class ScraperManager:
             except Exception as e:
                 logger.error(f"Error running scraper for {scraper_class.__name__}: {str(e)}")
         
-        logger.info(f"Scraper manager completed with {total_new_jobs} new jobs")
+        logger.info(f"ML-based scraper manager completed with {total_new_jobs} new jobs")
         return total_new_jobs
     
     def _get_or_create_company(self, name: str, career_page_url: str) -> Company:
@@ -81,11 +81,20 @@ class ScraperManager:
         
         return company
     
-    async def _process_jobs(self, company: Company, jobs: List[Dict[str, Any]]) -> int:
-        """Process and store jobs for a company"""
+    async def _process_jobs_with_ml(self, company: Company, jobs: List[Dict[str, Any]]) -> int:
+        """
+        Process and store jobs for a company using ML
+        
+        Args:
+            company: Company model instance
+            jobs: List of job dictionaries from scraper
+            
+        Returns:
+            Number of new jobs added
+        """
         new_jobs_count = 0
         
-        # First, gather all job data with appropriate processing
+        # First, process each job with ML
         for job_data in jobs:
             try:
                 # Skip jobs with missing essential data
@@ -93,28 +102,16 @@ class ScraperManager:
                     logger.warning(f"Skipping job with missing title or link: {job_data}")
                     continue
                 
-                # Skip "Share this role" entries (additional check)
-                if job_data["title"].lower() == "share this role." or job_data["title"].lower() == "share this role":
-                    logger.info(f"Skipping 'Share this role' entry: {job_data.get('link')}")
-                    continue
-                
-                # Skip jobs with suspicious titles
-                non_job_indicators = ["share", "favorite", "login", "sign in", "apply", "submit"]
-                if any(indicator in job_data["title"].lower() for indicator in non_job_indicators) and len(job_data["title"]) < 30:
-                    logger.info(f"Skipping suspicious non-job title: {job_data['title']}")
-                    continue
-                
                 # Get job description
                 description = job_data.get("description", "")
                 
-                # Use ML to classify the job if not already classified
-                if "category" not in job_data or not job_data["category"]:
-                    job_data["category"] = classify_job(job_data["title"], description)
+                # Use ML to classify the job
+                logger.info(f"Classifying job: {job_data['title']}")
+                job_data["category"] = classify_job(job_data["title"], description)
                 
-                # Use improved ML to extract requirements summary
-                if "requirements_summary" not in job_data or not job_data["requirements_summary"]:
-                    # Use the improved summarizer from app.ml.summarizer
-                    job_data["requirements_summary"] = summarize_job_requirements(description)
+                # Use ML to extract and format requirements
+                logger.info(f"Processing requirements for job: {job_data['title']}")
+                job_data["requirements_summary"] = process_job_requirements(description)
                 
                 # Check if job already exists
                 existing_job = self.db.query(Job).filter(
@@ -124,21 +121,27 @@ class ScraperManager:
                 
                 if existing_job:
                     # Update existing job if needed
-                    if (not existing_job.requirements_summary or 
-                        len(existing_job.requirements_summary) < 30 or
-                        "No specific requirements" in existing_job.requirements_summary):
-                        
-                        # Update requirements summary
-                        existing_job.requirements_summary = job_data["requirements_summary"]
-                        self.db.commit()
-                        logger.info(f"Updated requirements summary for existing job: {job_data['title']} at {company.name}")
+                    logger.info(f"Job already exists: {job_data['title']} - updating requirements")
+                    
+                    # Update the requirements summary
+                    existing_job.requirements_summary = job_data["requirements_summary"]
+                    
+                    # Update other fields if needed
+                    if existing_job.description != description and description:
+                        existing_job.description = description
+                    
+                    if existing_job.category != job_data["category"]:
+                        existing_job.category = job_data["category"]
+                    
+                    self.db.commit()
                 else:
                     # Create job data
+                    logger.info(f"Creating new job: {job_data['title']}")
                     job_create_data = {
                         "company_id": company.id,
                         "title": job_data["title"],
                         "link": job_data["link"],
-                        "posting_date": job_data["posting_date"],
+                        "posting_date": job_data.get("posting_date", datetime.utcnow()),
                         "discovery_date": datetime.utcnow(),
                         "category": job_data["category"],
                         "description": description,
@@ -157,7 +160,6 @@ class ScraperManager:
                         
                         # If we got here, job was successfully added
                         new_jobs_count += 1
-                        logger.info(f"Created new job: {job_data['title']} at {company.name}")
                         
                     except IntegrityError as e:
                         # Handle unique constraint violation
@@ -184,7 +186,7 @@ class ScraperManager:
         return new_jobs_count
 
 
-async def run_scrapers(db: Session):
-    """Run all scrapers - can be called from a scheduler"""
-    manager = ScraperManager(db)
+async def run_ml_scrapers(db: Session):
+    """Run all scrapers with ML processing - can be called from a scheduler"""
+    manager = MLScraperManager(db)
     return await manager.run_all_scrapers()

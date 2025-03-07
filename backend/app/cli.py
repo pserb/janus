@@ -24,6 +24,23 @@ async def run_scraper():
     try:
         await run_scrapers(db)
         logger.info("Scraper run completed")
+        
+        # After scraping completes, run the ML processor automatically
+        logger.info("Starting automatic ML processing for new jobs")
+        from app.ml.processor import MLProcessor
+        
+        processor = MLProcessor()
+        processor.db = db
+        
+        try:
+            processed = await processor._process_jobs()
+            logger.info(f"Processed {processed} jobs")
+        except Exception as e:
+            logger.error(f"Error in ML processing: {str(e)}")
+        finally:
+            # Don't close the DB here as it's shared with the outer scope
+            pass
+            
     finally:
         db.close()
 
