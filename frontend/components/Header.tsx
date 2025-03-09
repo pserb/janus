@@ -11,7 +11,6 @@ export const Header: React.FC = () => {
           <Briefcase className="h-6 w-6" />
           <h1 className="text-xl font-bold">Janus</h1>
           <Badge variant="sky-subtle" size="lg" className="ml-1">Internship Tracker</Badge>
-          <Badge variant="sky" size="lg" className="ml-1">Internship Tracker</Badge>
         </div>
         <div className="flex items-center gap-4">
           <Badge variant="secondary">Helping students find opportunities</Badge>

@@ -1,7 +1,10 @@
 // components/ErrorDisplay.tsx
 import React from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { 
+  ERROR_STYLES, 
+  ErrorIcon, 
+  RetryButton 
+} from '@/lib/utils';
 
 interface ErrorDisplayProps {
   message?: string;
@@ -13,18 +16,11 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
   retry
 }) => {
   return (
-    <div className="flex flex-col items-center justify-center w-full py-12 px-4 text-center">
-      <div className="bg-red-100 text-red-800 rounded-full p-3 mb-4">
-        <AlertTriangle className="h-8 w-8" />
-      </div>
-      <h3 className="text-lg font-medium mb-2">Error</h3>
-      <p className="text-muted-foreground mb-6 max-w-md">{message}</p>
-      {retry && (
-        <Button onClick={retry} variant="outline">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Try Again
-        </Button>
-      )}
+    <div className={ERROR_STYLES.CONTAINER}>
+      <ErrorIcon />
+      <h3 className={ERROR_STYLES.TITLE}>Error</h3>
+      <p className={ERROR_STYLES.MESSAGE}>{message}</p>
+      {retry && <RetryButton onClick={retry} />}
     </div>
   );
 };
