@@ -2,8 +2,9 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { format, formatDistance } from 'date-fns'
-import { AlertTriangle, Code, Cpu, RefreshCw, Calendar, Clock, Zap, Star } from 'lucide-react';
+import { AlertTriangle, Code, Cpu, RefreshCw, Calendar, Clock, Zap } from 'lucide-react';
 import React from 'react'
+import { badgeVariants } from "@/components/ui/badge"
 
 /**
  * Combines class names using clsx and tailwind-merge
@@ -110,10 +111,13 @@ export function getCompanyTicker(companyName: string): string | null {
   return null;
 }
 
+type BadgeVariantType = NonNullable<Parameters<typeof badgeVariants>[0]>['variant'];
+
+
 /**
  * Configuration for badge design elements
  */
-export const BADGE_VARIANTS = {
+export const BADGE_VARIANTS: Record<string, BadgeVariantType> = {
   // Status badges
   NEW: 'green',
   
@@ -126,44 +130,65 @@ export const BADGE_VARIANTS = {
 } as const;
 
 /**
- * Gets badge styling information for job categories
- */
-export function getJobCategoryBadgeProps(category: string) {
-  switch(category.toLowerCase()) {
-    case 'software':
-      return {
-        variant: BADGE_VARIANTS.SOFTWARE,
-        icon: <Code className="h-3 w-3" />,
-        label: 'Software'
-      };
-    case 'hardware':
-      return {
-        variant: BADGE_VARIANTS.HARDWARE,
-        icon: <Cpu className="h-3 w-3" />,
-        label: 'Hardware'
-      };
-    default:
-      return {
-        variant: BADGE_VARIANTS.DEFAULT,
-        icon: null,
-        label: category
-      };
-  }
-}
-
-/**
  * Gets badge styling information for job status (new, etc.)
  */
 export function getJobStatusBadgeProps(isNew: boolean | number) {
   if (isNew) {
     return {
       variant: BADGE_VARIANTS.NEW,
-      icon: <Star className="h-3 w-3" />,
+      icon: StatusIcons.NEW,
       label: 'New',
     };
   }
   return null;
 }
+
+// Interface for job category configuration
+export interface JobCategory {
+  id: string;
+  label: string;
+  variant: BadgeVariantType;
+  icon: React.ReactNode;
+}
+
+export type JobCategoriesConfig = {
+  [key: string]: JobCategory;
+};
+
+// Job Category Configuration
+export const JOB_CATEGORIES: JobCategoriesConfig = {
+  software: {
+    id: 'software',
+    label: 'Software',
+    variant: BADGE_VARIANTS.SOFTWARE,
+    icon: <Code className="h-3 w-3 text-current" />
+  },
+  hardware: {
+    id: 'hardware',
+    label: 'Hardware',
+    variant: BADGE_VARIANTS.HARDWARE,
+    icon: <Cpu className="h-3 w-3 text-current" />
+  },
+  // Additional categories can be added here in the future
+  // e.g. design: { id: 'design', label: 'Design', variant: 'purple-subtle', icon: <Paintbrush className="h-3 w-3" /> }
+};
+
+// Helper to get all categories as an array
+export function getAllJobCategories() {
+  return Object.values(JOB_CATEGORIES);
+}
+
+// Updated function to use the centralized configuration
+export function getJobCategoryBadgeProps(categoryId: string) {
+  return JOB_CATEGORIES[categoryId] || {
+    id: categoryId,
+    label: categoryId,
+    variant: BADGE_VARIANTS.DEFAULT,
+    icon: null
+  };
+}
+
+// Existing code continues...
 
 /**
  * Common animation classes

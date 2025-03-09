@@ -1,10 +1,23 @@
 // components/JobFilters.tsx
 import React from 'react';
-import { Search, Filter, SlidersHorizontal } from 'lucide-react';
+import { Search, Filter } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { JobFilters } from '@/types';
 import * as Label from '@radix-ui/react-label';
-import * as Select from '@radix-ui/react-select';
+import { Badge } from '@/components/ui/badge';
+import {
+  getAllJobCategories,
+  getJobCategoryBadgeProps,
+  getJobStatusBadgeProps,
+  type JobCategory
+} from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface JobFiltersProps {
   filters: JobFilters;
@@ -17,11 +30,14 @@ export const JobFiltersComponent: React.FC<JobFiltersProps> = ({
   onFiltersChange,
   totalJobs,
 }) => {
+  // Get all available job categories
+  const jobCategories: JobCategory[] = getAllJobCategories();
+
   // Handle category change
   const handleCategoryChange = (value: string) => {
     onFiltersChange({
       ...filters,
-      category: value as 'software' | 'hardware' | 'all',
+      category: value,
     });
   };
 
@@ -40,6 +56,13 @@ export const JobFiltersComponent: React.FC<JobFiltersProps> = ({
       showOnlyNew: e.target.checked,
     });
   };
+
+  const newBadgeProps = getJobStatusBadgeProps(true);
+
+  // Get the current category selection for display
+  const currentCategory: JobCategory | null = filters.category === 'all'
+    ? null
+    : getJobCategoryBadgeProps(filters.category || '');
 
   return (
     <Card className="mb-6">
@@ -62,52 +85,61 @@ export const JobFiltersComponent: React.FC<JobFiltersProps> = ({
             </div>
           </div>
 
-          {/* Category filter */}
+          {/* Category filter - Using shadcn/ui Select component */}
           <div className="w-full md:w-48">
             <Label.Root className="text-sm font-medium mb-1.5 block">
               Category
             </Label.Root>
-            <Select.Root
+            <Select
               value={filters.category || 'all'}
               onValueChange={handleCategoryChange}
             >
-              <Select.Trigger
-                className="inline-flex items-center justify-between w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary data-[placeholder]:text-muted-foreground"
-                aria-label="Category"
+              <SelectTrigger
+                className="w-full h-[38px] py-2 px-3"
               >
-                <div className="flex items-center">
-                  <Filter className="mr-2 h-4 w-4" />
-                  <Select.Value placeholder="Select category" />
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 flex-shrink-0" />
+                  <SelectValue placeholder="Select category">
+                    {currentCategory ? (
+                      <div className="flex items-center"> {/* Add flex container for alignment */}
+                        <Badge
+                          variant={currentCategory.variant}
+                          icon={currentCategory.icon}
+                          size="md"
+                          className="inline-flex items-center" /* Ensure badge content is aligned */
+                        >
+                          {currentCategory.label}
+                        </Badge>
+                      </div>
+                    ) : (
+                      <span className="flex items-center h-5">All Categories</span> /* Match height for consistent alignment */
+                    )}
+                  </SelectValue>
                 </div>
-                <Select.Icon>
-                  <SlidersHorizontal className="h-4 w-4 opacity-50" />
-                </Select.Icon>
-              </Select.Trigger>
-              <Select.Portal>
-                <Select.Content className="overflow-hidden bg-popover rounded-md border shadow-md">
-                  <Select.Viewport className="p-1">
-                    <Select.Item
-                      value="all"
-                      className="relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
-                    >
-                      <Select.ItemText>All Categories</Select.ItemText>
-                    </Select.Item>
-                    <Select.Item
-                      value="software"
-                      className="relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
-                    >
-                      <Select.ItemText>Software</Select.ItemText>
-                    </Select.Item>
-                    <Select.Item
-                      value="hardware"
-                      className="relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
-                    >
-                      <Select.ItemText>Hardware</Select.ItemText>
-                    </Select.Item>
-                  </Select.Viewport>
-                </Select.Content>
-              </Select.Portal>
-            </Select.Root>
+              </SelectTrigger>
+              <SelectContent>
+                {/* All Categories option */}
+                <SelectItem value="all">
+                  <span className="flex items-center h-5">All Categories</span> {/* Match height */}
+                </SelectItem>
+
+                {/* Dynamically generate category options */}
+                {jobCategories.map(category => (
+                  <SelectItem key={category.id} value={category.id}>
+                    <div className="flex items-center"> {/* Add flex container for alignment */}
+                      <Badge
+                        variant={category.variant}
+                        icon={category.icon}
+                        size="md"
+                        className="inline-flex items-center" /* Ensure badge content is aligned */
+                      >
+                        {category.label}
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Show only new checkbox */}
@@ -122,9 +154,12 @@ export const JobFiltersComponent: React.FC<JobFiltersProps> = ({
               />
               <label
                 htmlFor="showOnlyNew"
-                className="ml-2 block text-sm font-medium"
+                className="ml-2 flex flex-row text-sm font-medium gap-x-1"
               >
-                Show only new jobs
+                Show only
+                {newBadgeProps && <Badge variant={newBadgeProps.variant} icon={newBadgeProps.icon} className="ml-1">
+                  {newBadgeProps.label}
+                </Badge>}
               </label>
             </div>
           </div>

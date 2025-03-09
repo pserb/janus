@@ -34,7 +34,7 @@ export interface PaginatedResponse<T> {
 }
 
 export interface JobFilters {
-  category?: 'software' | 'hardware' | 'all';
+  category?: string; 
   search?: string;
   showOnlyNew?: boolean;
 }

@@ -1,6 +1,6 @@
 // components/JobCard.tsx
 import React, { useState } from 'react';
-import { ExternalLink, Briefcase, Building } from 'lucide-react';
+import { ExternalLink, Building, Ellipsis } from 'lucide-react';
 import { Job } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,25 +32,13 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onViewDetails }) => {
   const statusBadgeProps = getJobStatusBadgeProps(job.is_new);
 
   return (
-    <Card className="w-full h-full transition-all hover:shadow-md">
+    <Card className="w-full h-full flex flex-col">
       <CardHeader className="pb-2">
         <div className="flex flex-col space-y-2">
-          <div className="flex-1">
-            <CardTitle className="text-lg font-bold line-clamp-2">{job.title}</CardTitle>
-            <div className="flex flex-wrap gap-2 sm:flex-nowrap sm:items-start mt-2">
-              {statusBadgeProps && (
-                <Badge variant={statusBadgeProps.variant}>
-                  {statusBadgeProps.label}
-                </Badge>
-              )}
-              <Badge
-                variant={categoryBadgeProps.variant}
-                icon={categoryBadgeProps.icon}
-              >
-                {categoryBadgeProps.label}
-              </Badge>
-            </div>
-            <div className="flex items-center text-sm text-muted-foreground mt-4 ml-[0.1rem]">
+          {/* Company & Badge Row */}
+          <div className="flex justify-between items-center">
+            {/* Company Logo & Name (Left) */}
+            <div className="flex items-center text-sm text-muted-foreground">
               {ticker && !logoError ? (
                 <div className="h-7 w-7 mr-2 relative">
                   <Image
@@ -67,40 +55,71 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onViewDetails }) => {
               )}
               <span className="font-medium">{job.company_name}</span>
             </div>
+
+            {/* Badges (Right) */}
+            <div className="flex gap-2 ml-auto">
+              {statusBadgeProps && (
+                <Badge variant={statusBadgeProps.variant} icon={statusBadgeProps.icon}>
+                  {statusBadgeProps.label}
+                </Badge>
+              )}
+              <Badge
+                variant={categoryBadgeProps.variant}
+                icon={categoryBadgeProps.icon}
+              >
+                {categoryBadgeProps.label}
+              </Badge>
+            </div>
           </div>
 
+          {/* Job Title - Fixed height with ellipsis for overflow */}
+          <div className="h-[3rem]"> {/* Fixed height container */}
+            <CardTitle className="text-lg font-bold line-clamp-2">
+              {job.title}
+            </CardTitle>
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent className="pb-2 -mt-2">
-        <div className="text-sm">
-          <div className="text-muted-foreground">
+      <CardContent className="pb-2 flex-grow flex flex-col -mt-4">
+        <div className="text-sm flex flex-col h-full">
+          {/* Posted Date - Fixed height */}
+          <div className="text-muted-foreground mb-3">
             <span className="font-medium">Posted:</span> {formatDate(job.posting_date)} ({getRelativeTime(job.posting_date)})
           </div>
-          <div className="mt-3">
-            <p className="line-clamp-2 text-sm mt-1">{truncateText(job.requirements_summary || job.description || '')}</p>
+
+          {/* Description - Takes remaining space with fixed height */}
+          <div className="flex-grow">
+            <p className="line-clamp-2 text-sm">
+              {truncateText(job.requirements_summary || job.description || 'No specific requirements extracted.')}
+            </p>
           </div>
         </div>
       </CardContent>
 
-      <CardFooter className="pt-0 flex gap-2 justify-between">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onViewDetails && onViewDetails(job)}
-        >
-          <Briefcase className="h-4 w-4 mr-2" />
-          View Details
-        </Button>
+      {/* Footer always at the bottom */}
+      <CardFooter className="pt-2 mt-auto">
+        <div className="w-full flex justify-between items-center">
+          <Button
+            className='cursor-pointer'
+            variant="outline"
+            size="sm"
+            onClick={() => onViewDetails && onViewDetails(job)}
+          >
+            <Ellipsis className="h-4 w-4 mr-2" />
+            View Details
+          </Button>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => window.open(job.link, '_blank')}
-        >
-          <ExternalLink className="h-4 w-4 mr-2" />
-          Apply Now
-        </Button>
+          <Button
+            className='cursor-pointer'
+            variant="secondary"
+            size="sm"
+            onClick={() => window.open(job.link, '_blank')}
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Apply Now
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );

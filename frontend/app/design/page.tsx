@@ -40,7 +40,7 @@ const mockJobs: Job[] = [
     discovery_date: new Date().toISOString(),
     category: 'hardware',
     description: 'Apple is seeking a Hardware Engineering Intern to join our hardware engineering team. In this role, you will help design and test next-generation hardware components for Apple products.\n\nResponsibilities:\n• Support the design and testing of hardware components\n• Analyze test data and document results\n• Collaborate with cross-functional teams\n• Contribute to innovative solutions for complex problems\n\nRequirements:\n• Currently pursuing a degree in Electrical Engineering, Computer Engineering, or related field\n• Familiarity with circuit design and analysis\n• Understanding of digital/analog electronics principles\n• Knowledge of hardware description languages (e.g., VHDL, Verilog) is a plus\n• Strong problem-solving skills and attention to detail',
-    requirements_summary: '• Pursuing a degree in Electrical Engineering or Computer Engineering\n• Familiarity with circuit design and analysis\n• Understanding of digital/analog electronics principles',
+    requirements_summary: 'no details',
     is_active: true,
     is_new: 0
   },
@@ -48,7 +48,7 @@ const mockJobs: Job[] = [
     id: 3,
     company_id: 3,
     company_name: 'Microsoft',
-    title: 'Software Development Engineer Intern',
+    title: 'Software Development Engineer',
     link: 'https://careers.microsoft.com/students/jobs/789',
     posting_date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(), // 1 day ago
     discovery_date: new Date().toISOString(),
