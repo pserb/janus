@@ -41,3 +41,71 @@ export function truncateText(text: string, maxLength: number = 150): string {
 export function createUniqueId(): string {
   return Math.random().toString(36).substring(2, 9)
 }
+
+// lib/utils.ts (append to existing file)
+
+/**
+ * Maps company names to their ticker symbols
+ */
+export function getCompanyTicker(companyName: string): string | null {
+  if (!companyName) return null;
+  
+  // Normalize the company name (lowercase, remove Inc., Corp., etc.)
+  const normalizedName = companyName.toLowerCase()
+    .replace(/\binc\.?\b|\bcorp\.?\b|\bco\.?\b|\bcompany\b|\bcorporation\b|\blimited\b|\bltd\.?\b/g, '')
+    .trim();
+  
+  // Common company name to ticker mappings
+  const companyMap: Record<string, string> = {
+    'apple': 'AAPL',
+    'microsoft': 'MSFT',
+    'google': 'GOOGL',
+    'alphabet': 'GOOGL',
+    'amazon': 'AMZN',
+    'meta': 'META',
+    'facebook': 'META',
+    'tesla': 'TSLA',
+    'nvidia': 'NVDA',
+    'netflix': 'NFLX',
+    'adobe': 'ADBE',
+    'salesforce': 'CRM',
+    'oracle': 'ORCL',
+    'ibm': 'IBM',
+    'intel': 'INTC',
+    'amd': 'AMD',
+    'cisco': 'CSCO',
+    'paypal': 'PYPL',
+    'uber': 'UBER',
+    'lyft': 'LYFT',
+    'snap': 'SNAP',
+    'square': 'SQ',
+    'block': 'SQ',
+    'shopify': 'SHOP',
+    'zoom': 'ZM',
+    'pinterest': 'PINS',
+    'spotify': 'SPOT',
+    'coinbase': 'COIN',
+    'snowflake': 'SNOW',
+    'palantir': 'PLTR',
+    'roblox': 'RBLX',
+    'unity': 'U',
+    'c3.ai': 'AI',
+    'atlassian': 'TEAM',
+    'doordash': 'DASH',
+    'roku': 'ROKU',
+    'alibaba': 'BABA',
+    'jd.com': 'JD',
+    'baidu': 'BIDU',
+    'tencent': 'TCEHY',
+  };
+  
+  // Check for matches
+  for (const [name, ticker] of Object.entries(companyMap)) {
+    if (normalizedName.includes(name)) {
+      return ticker;
+    }
+  }
+  
+  // If no match found
+  return null;
+}

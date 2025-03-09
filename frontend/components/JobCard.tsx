@@ -1,11 +1,12 @@
 // components/JobCard.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { ExternalLink, Briefcase, Building } from 'lucide-react';
 import { Job } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatDate, getRelativeTime, truncateText } from '@/lib/utils';
+import { formatDate, getRelativeTime, truncateText, getCompanyTicker } from '@/lib/utils';
+import Image from 'next/image';
 
 interface JobCardProps {
   job: Job;
@@ -13,6 +14,12 @@ interface JobCardProps {
 }
 
 export const JobCard: React.FC<JobCardProps> = ({ job, onViewDetails }) => {
+  // Always define state at the top level, not conditionally
+  const [logoError, setLogoError] = useState(false);
+  
+  // Get company ticker for logo
+  const ticker = getCompanyTicker(job.company_name);
+  
   return (
     <Card className="w-full h-full transition-all hover:shadow-md">
       <CardHeader className="pb-2">
@@ -20,12 +27,26 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onViewDetails }) => {
           <div className="flex-1">
             <CardTitle className="text-lg font-bold line-clamp-2">{job.title}</CardTitle>
             <div className="flex items-center text-sm text-muted-foreground mt-1">
-              <Building className="h-4 w-4 mr-1" />
+              {ticker && !logoError ? (
+                <div className="h-5 w-5 mr-2 relative">
+                  <Image 
+                    src={`/logos/company_logos/${ticker}.svg`}
+                    alt={`${job.company_name} logo`}
+                    className="object-contain rounded"
+                    fill
+                    sizes="20px"
+                    onError={() => setLogoError(true)}
+                  />
+                </div>
+              ) : (
+                <Building className="h-4 w-4 mr-1" />
+              )}
               <span className="font-medium">{job.company_name}</span>
             </div>
           </div>
           <div className="flex gap-2">
             {job.is_new == 1 ? <Badge variant="default">New</Badge> : null}
+            {/* badge variant  */}
             <Badge variant="default">{job.category === 'software' ? 'Software' : 'Hardware'}</Badge>
           </div>
         </div>

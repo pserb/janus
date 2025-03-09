@@ -1,11 +1,12 @@
 // components/JobDetailModal.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { ExternalLink, X, Calendar, Building, Tag } from 'lucide-react';
 import { Job } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getCompanyTicker } from '@/lib/utils';
 import * as Dialog from '@radix-ui/react-dialog';
+import Image from 'next/image';
 
 interface JobDetailModalProps {
   job: Job | null;
@@ -14,7 +15,13 @@ interface JobDetailModalProps {
 }
 
 export const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, isOpen, onClose }) => {
+  // Always declare hooks at the top level
+  const [logoError, setLogoError] = useState(false);
+  
   if (!job) return null;
+
+  // Get company ticker for logo - after hooks but before return
+  const ticker = getCompanyTicker(job.company_name);
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
@@ -35,7 +42,20 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, isOpen, onC
           <div className="space-y-6">
             <div className="flex flex-wrap gap-2 items-center">
               <div className="flex items-center gap-1">
-                <Building className="h-4 w-4 text-muted-foreground" />
+                {ticker && !logoError ? (
+                  <div className="h-6 w-6 mr-1 relative">
+                    <Image 
+                      src={`/logos/company_logos/${ticker}.svg`}
+                      alt={`${job.company_name} logo`}
+                      className="object-contain rounded"
+                      fill
+                      sizes="24px"
+                      onError={() => setLogoError(true)}
+                    />
+                  </div>
+                ) : (
+                  <Building className="h-4 w-4 text-muted-foreground" />
+                )}
                 <span className="font-medium">{job.company_name}</span>
               </div>
               
