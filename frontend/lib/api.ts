@@ -3,8 +3,19 @@ import axios from 'axios';
 import { Job, PaginatedResponse, JobListingStats } from '@/types';
 import { getSyncInfo, saveJobs, updateSyncTimestamp } from '@/lib/db';
 
-// Base URL for API - would be environment variable in production
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Dynamically determine API URL based on where the app is running
+const getApiBaseUrl = () => {
+  // If running in a browser, use the same host with the backend port
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol;
+    const host = window.location.hostname;
+    return `${protocol}//${host}:8000`;
+  }
+  // Fallback for server-side rendering
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Create an axios instance
 const api = axios.create({

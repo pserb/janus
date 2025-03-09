@@ -21,6 +21,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/janus
+      - ALLOWED_ORIGINS=http://localhost:3000,http://129.159.91.246:3000
     depends_on:
       - db
     restart: unless-stopped
