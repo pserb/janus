@@ -28,6 +28,10 @@ def get_companies(
 
 
 def create_company(db: Session, company: schemas.CompanyCreate) -> models.Company:
+    # If company is a dict, convert it to a CompanyCreate object
+    if isinstance(company, dict):
+        company = schemas.CompanyCreate(**company)
+        
     db_company = models.Company(**company.dict())
     db.add(db_company)
     db.commit()
@@ -44,7 +48,13 @@ def update_company(
     if not db_company:
         return None
 
-    update_data = company.dict(exclude_unset=True)
+    # Handle both Pydantic models and dictionaries
+    if hasattr(company, 'dict'):
+        update_data = company.dict(exclude_unset=True)
+    else:
+        # If company is already a dict, use it directly
+        update_data = company
+
     for key, value in update_data.items():
         setattr(db_company, key, value)
 
@@ -117,24 +127,36 @@ def get_jobs(
     return jobs, total
 
 
-def create_job(db: Session, job: schemas.JobCreate) -> models.Job:
-    # Get company name for the job
-    company = (
-        db.query(models.Company).filter(models.Company.id == job.company_id).first()
-    )
+def create_job(db: Session, job: Any) -> models.Job:
+    """
+    Create a new job. Can accept either a Pydantic model or a dictionary.
+    """
+    try:
+        # Convert dict to JobCreate if needed
+        if isinstance(job, dict):
+            # Ensure company_id is present
+            if 'company_id' not in job:
+                raise ValueError("Job data must include company_id")
+                
+            job = schemas.JobCreate(**job)
+        
+        # Get company for validation
+        company = db.query(models.Company).filter(models.Company.id == job.company_id).first()
+        if not company:
+            raise ValueError(f"Company with ID {job.company_id} not found")
 
-    if not company:
-        raise ValueError(f"Company with ID {job.company_id} not found")
+        # Create job object
+        job_data = job.dict()
+        db_job = models.Job(**job_data)
 
-    # Create job object with company name
-    job_data = job.dict()
-    db_job = models.Job(**job_data)
+        db.add(db_job)
+        db.commit()
+        db.refresh(db_job)
 
-    db.add(db_job)
-    db.commit()
-    db.refresh(db_job)
-
-    return db_job
+        return db_job
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 def update_job(
@@ -144,7 +166,13 @@ def update_job(
     if not db_job:
         return None
 
-    update_data = job.dict(exclude_unset=True)
+    # Handle both Pydantic models and dictionaries
+    if hasattr(job, 'dict'):
+        update_data = job.dict(exclude_unset=True)
+    else:
+        # If job is already a dict, use it directly
+        update_data = job
+
     for key, value in update_data.items():
         setattr(db_job, key, value)
 
@@ -247,6 +275,10 @@ def get_sources(
 
 
 def create_source(db: Session, source: schemas.SourceCreate) -> models.Source:
+    # Handle both Pydantic models and dictionaries
+    if isinstance(source, dict):
+        source = schemas.SourceCreate(**source)
+        
     db_source = models.Source(**source.dict())
     db.add(db_source)
     db.commit()
@@ -261,7 +293,13 @@ def update_source(
     if not db_source:
         return None
 
-    update_data = source.dict(exclude_unset=True)
+    # Handle both Pydantic models and dictionaries
+    if hasattr(source, 'dict'):
+        update_data = source.dict(exclude_unset=True)
+    else:
+        # If source is already a dict, use it directly
+        update_data = source
+
     for key, value in update_data.items():
         setattr(db_source, key, value)
 
@@ -292,7 +330,14 @@ def get_sources_for_crawling(db: Session) -> List[models.Source]:
 
     for source in sources_crawled:
         # Check if it's time to crawl this source
-        time_diff = datetime.now(pytz.utc) - source.last_crawled
+        current_time = datetime.now(pytz.utc)
+        last_crawled = source.last_crawled
+        
+        # Make sure last_crawled has timezone info (assume UTC if naive)
+        if last_crawled.tzinfo is None:
+            last_crawled = pytz.utc.localize(last_crawled)
+            
+        time_diff = current_time - last_crawled
         if time_diff.total_seconds() / 60 >= source.crawl_frequency_minutes:
             sources_to_crawl.append(source)
 
@@ -318,7 +363,14 @@ def get_companies_for_crawling(db: Session) -> List[models.Company]:
 
     for company in companies_scraped:
         # Check if it's time to crawl this company
-        time_diff = datetime.now(pytz.utc) - company.last_scraped
+        current_time = datetime.now(pytz.utc)
+        last_scraped = company.last_scraped
+        
+        # Make sure last_scraped has timezone info (assume UTC if naive)
+        if last_scraped.tzinfo is None:
+            last_scraped = pytz.utc.localize(last_scraped)
+            
+        time_diff = current_time - last_scraped
         if time_diff.total_seconds() / 3600 >= company.scrape_frequency_hours:
             companies_to_crawl.append(company)
 
@@ -387,7 +439,11 @@ def update_sync_info(db: Session, sync_info: schemas.SyncInfoUpdate) -> models.S
     db_sync_info = db.query(models.SyncInfo).first()
     if not db_sync_info:
         # Create initial sync info if not exists
-        sync_data = sync_info.dict(exclude_unset=True)
+        if hasattr(sync_info, 'dict'):
+            sync_data = sync_info.dict(exclude_unset=True)
+        else:
+            sync_data = sync_info
+        
         if not sync_data.get("last_sync_timestamp"):
             sync_data["last_sync_timestamp"] = datetime.now(pytz.utc)
 
@@ -395,7 +451,11 @@ def update_sync_info(db: Session, sync_info: schemas.SyncInfoUpdate) -> models.S
         db.add(db_sync_info)
     else:
         # Update existing sync info
-        update_data = sync_info.dict(exclude_unset=True)
+        if hasattr(sync_info, 'dict'):
+            update_data = sync_info.dict(exclude_unset=True)
+        else:
+            update_data = sync_info
+            
         for key, value in update_data.items():
             setattr(db_sync_info, key, value)
 

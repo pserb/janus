@@ -48,7 +48,7 @@ export async function fetchJobs({
       params.since = since;
     }
 
-    const response = await api.get<PaginatedResponse<Job>>('/jobs', { params });
+    const response = await api.get<PaginatedResponse<Job>>('/api/jobs', { params });
     return response.data;
   } catch (error) {
     console.error('Error fetching jobs:', error);
@@ -59,7 +59,7 @@ export async function fetchJobs({
 // Fetch stats from the API
 export async function fetchStats(): Promise<JobListingStats> {
   try {
-    const response = await api.get<JobListingStats>('/stats');
+    const response = await api.get<JobListingStats>('/api/stats');
     return response.data;
   } catch (error) {
     console.error('Error fetching stats:', error);

@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import re
 from datetime import datetime
 import pytz
-from typing import Tuple
+from typing import Tuple, Dict, Any
 from pydantic import ValidationError
 from urllib.parse import urljoin
 
@@ -209,30 +209,27 @@ class CompanyScraper(BaseScraper):
                 # Set posting date to now since we don't have that information
                 posting_date = datetime.now(pytz.utc)
 
-                # Create job data
-                job_data = JobCreate(
-                    company_id=company.id,
-                    title=job["title"],
-                    link=job["link"],
-                    posting_date=posting_date,
-                    category=category,
-                    description="",  # Will fetch detailed description later if needed
-                    is_active=True,
-                    job_source="company_website",
-                    location=location,
-                )
+                # Create job data as a dictionary with all required fields
+                job_data: Dict[str, Any] = {
+                    "company_id": company.id,
+                    "title": job["title"],
+                    "link": job["link"],
+                    "posting_date": posting_date,
+                    "category": category,
+                    "description": "",  # Will fetch detailed description later if needed
+                    "is_active": True,
+                    "job_source": "company_website",
+                    "location": location,
+                }
 
                 # Create job if it doesn't exist
                 try:
-                    is_new = self.create_job(job_data.dict())
+                    is_new = self.create_job(job_data)
 
                     if is_new:
                         jobs_new += 1
 
                     jobs_found += 1
-                except ValidationError as e:
-                    logger.error(f"Validation error creating job: {str(e)}")
-                    continue
                 except Exception as e:
                     logger.error(f"Error creating job: {str(e)}")
                     continue

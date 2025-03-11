@@ -63,10 +63,13 @@ echo ""
 
 # Step 4: Initialize the database schema
 echo "▶️ Step 4: Creating database schema..."
-docker compose exec -T backend python -c "
+# Create a Python script that properly initializes the database
+cat > /tmp/init_db.py << 'EOL'
 import logging
 from sqlalchemy import inspect
 from app.database import engine, Base
+# Import all models to ensure they're registered with SQLAlchemy
+from app.models import Company, Job, Source, CrawlLog, SyncInfo
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -89,62 +92,39 @@ for table in expected_tables:
         logger.info(f'✓ Table {table} exists')
 
 success = all(table in existing_tables for table in expected_tables)
-print(f'Database initialization {"successful" if success else "FAILED"}')
+print(f'Database initialization {"successful" if success else "failed"}')
 print(f'Created tables: {len(existing_tables)}')
-"
+print(f'Tables: {", ".join(existing_tables)}')
+EOL
+
+# Copy the script to the backend container
+docker compose cp /tmp/init_db.py backend:/app/init_db.py
+
+# Run the script
+db_init_output=$(docker compose exec -T backend python /app/init_db.py)
+echo "$db_init_output"
+
+# Check if initialization was successful
+if echo "$db_init_output" | grep -q "Database initialization failed"; then
+    echo "⚠️ Database initialization failed. Exiting."
+    exit 1
+fi
+
+# Clean up
+rm /tmp/init_db.py
 echo "✅ Database schema initialized."
 echo ""
 
 # Step 5: Initialize company data sources
 echo "▶️ Step 5: Initializing top tech companies and job sources..."
-docker compose exec -T backend python -c "
-from app.database import SessionLocal
-from app import crud, models, schemas
+company_init_output=$(docker compose exec -T backend python -m app.cli_init)
+echo "$company_init_output"
 
-# Real tech companies for internships
-TECH_COMPANIES = [
-    {\"name\": \"Google\", \"website\": \"https://www.google.com\", \"career_page_url\": \"https://careers.google.com/jobs/results/?degree=BACHELORS&degree=MASTERS&employment_type=INTERN&employment_type=FULL_TIME&jex=ENTRY_LEVEL\", \"ticker\": \"GOOGL\"},
-    {\"name\": \"Microsoft\", \"website\": \"https://www.microsoft.com\", \"career_page_url\": \"https://careers.microsoft.com/students/us/en/search-results?keywords=Intern%20OR%20%22New%20Grad%22\", \"ticker\": \"MSFT\"},
-    {\"name\": \"Apple\", \"website\": \"https://www.apple.com\", \"career_page_url\": \"https://jobs.apple.com/en-us/search?team=internships-STDNT-INTRN\", \"ticker\": \"AAPL\"},
-    {\"name\": \"Amazon\", \"website\": \"https://www.amazon.com\", \"career_page_url\": \"https://www.amazon.jobs/en/teams/internships-for-students\", \"ticker\": \"AMZN\"},
-    {\"name\": \"Meta\", \"website\": \"https://www.meta.com\", \"career_page_url\": \"https://www.metacareers.com/jobs/?roles[0]=intern\", \"ticker\": \"META\"},
-    {\"name\": \"Netflix\", \"website\": \"https://www.netflix.com\", \"career_page_url\": \"https://jobs.netflix.com/search?q=intern\", \"ticker\": \"NFLX\"},
-    {\"name\": \"NVIDIA\", \"website\": \"https://www.nvidia.com\", \"career_page_url\": \"https://www.nvidia.com/en-us/about-nvidia/careers/university-recruiting/\", \"ticker\": \"NVDA\"},
-    {\"name\": \"IBM\", \"website\": \"https://www.ibm.com\", \"career_page_url\": \"https://www.ibm.com/employment/students/\", \"ticker\": \"IBM\"},
-    {\"name\": \"Intel\", \"website\": \"https://www.intel.com\", \"career_page_url\": \"https://jobs.intel.com/en/search-jobs/Intern/599/1\", \"ticker\": \"INTC\"},
-    {\"name\": \"AMD\", \"website\": \"https://www.amd.com\", \"career_page_url\": \"https://jobs.amd.com/go/Students/2567200/\", \"ticker\": \"AMD\"}
-]
-
-# Set up job boards
-JOB_BOARDS = [
-    {\"name\": \"LinkedIn Software\", \"url\": \"https://www.linkedin.com/jobs/search/?keywords=software%20intern\", \"crawler_type\": \"linkedin\", \"crawl_frequency_minutes\": 60, \"priority\": 1},
-    {\"name\": \"LinkedIn Hardware\", \"url\": \"https://www.linkedin.com/jobs/search/?keywords=hardware%20intern\", \"crawler_type\": \"linkedin\", \"crawl_frequency_minutes\": 60, \"priority\": 1},
-    {\"name\": \"Indeed Software\", \"url\": \"https://www.indeed.com/jobs?q=software+intern\", \"crawler_type\": \"indeed\", \"crawl_frequency_minutes\": 120, \"priority\": 2},
-    {\"name\": \"Glassdoor Software\", \"url\": \"https://www.glassdoor.com/Job/software-intern-jobs-SRCH_KO0,15.htm\", \"crawler_type\": \"glassdoor\", \"crawl_frequency_minutes\": 180, \"priority\": 2}
-]
-
-db = SessionLocal()
-try:
-    # Add companies
-    companies_added = 0
-    for company_data in TECH_COMPANIES:
-        existing = db.query(models.Company).filter(models.Company.name == company_data['name']).first()
-        if not existing:
-            crud.create_company(db, schemas.CompanyCreate(**company_data))
-            companies_added += 1
-    
-    # Add job boards
-    sources_added = 0
-    for source_data in JOB_BOARDS:
-        existing = db.query(models.Source).filter(models.Source.name == source_data['name']).first()
-        if not existing:
-            crud.create_source(db, schemas.SourceCreate(**source_data))
-            sources_added += 1
-    
-    print(f'✅ Added {companies_added} companies and {sources_added} job sources')
-finally:
-    db.close()
-"
+# Check if there was an error
+if echo "$company_init_output" | grep -q "Error"; then
+    echo "⚠️ Failed to initialize companies and job sources. Exiting."
+    exit 1
+fi
 echo "✅ Companies and job sources initialized."
 echo ""
 
@@ -164,14 +144,15 @@ echo ""
 # Step 8: Fetch company logos
 echo "▶️ Step 8: Fetching company logos..."
 # First make sure the models import is fixed in logo_fetcher.py
-docker compose exec -T backend bash -c "sed -i 's/from \.\. import crud/from \.\. import crud, models/' /app/app/ml/logo_fetcher.py"
+docker compose exec -T backend bash -c "sed -i 's/from \.\. import crud/from \.\. import crud, models/' /app/app/ml/logo_fetcher.py" 2>/dev/null || true
 docker compose exec -T backend python -m app.cli logos --all 2>/dev/null || true
 echo "✅ Company logos fetched."
 echo ""
 
 # Step 9: Display stats
 echo "▶️ Step 9: Displaying current job statistics..."
-docker compose exec -T backend python -m app.cli stats 2>/dev/null || echo "No jobs found yet. Run scrapers again later to find jobs."
+stats_output=$(docker compose exec -T backend python -m app.cli stats 2>/dev/null || echo "No jobs found yet. Run scrapers again later to find jobs.")
+echo "$stats_output"
 echo ""
 
 # Final output

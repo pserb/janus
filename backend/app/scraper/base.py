@@ -167,6 +167,10 @@ class BaseScraper(ABC):
         company_id = job_data.get("company_id")
         link = job_data.get("link")
 
+        if not company_id or not link:
+            logger.error("Job data missing company_id or link")
+            return False
+
         # Query the database for jobs with the same company_id and link
         existing_jobs = (
             self.db.query(Company.id)

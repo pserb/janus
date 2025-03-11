@@ -12,7 +12,7 @@ from io import BytesIO
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 
-from .. import crud, models, models  # Add models import here
+from .. import crud, models, models, models, models, models  # Add models import here
 from ..database import SessionLocal
 
 logger = logging.getLogger("logo-fetcher")

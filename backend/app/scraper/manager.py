@@ -44,8 +44,12 @@ class ScraperManager:
                         and attr is not BaseScraper
                     ):
 
-                        # Get scraper type from class name (e.g., LinkedInScraper -> linkedin)
-                        scraper_type = attr.__name__.replace("Scraper", "").lower()
+                        # Get scraper type from class name
+                        if attr.__name__ == "CompanyScraper":
+                            scraper_type = "companyscraper"  # Keep the full name for CompanyScraper
+                        else:
+                            scraper_type = attr.__name__.replace("Scraper", "").lower()
+                            
                         self.scrapers[scraper_type] = attr
                         logger.info(
                             f"Registered scraper: {scraper_type} -> {attr.__name__}"
