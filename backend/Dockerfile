@@ -1,39 +1,33 @@
-# Backend Dockerfile
-FROM python:3.12
+FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     build-essential \
-    curl \
-    libx11-xcb1 libxcomposite1 libxcursor1 libxdamage1 \
-    libxi6 libxtst6 libnss3 libcups2 libxss1 libxrandr2 \
-    libasound2 libatk1.0-0 libatk-bridge2.0-0 libpangocairo-1.0-0 \
-    libgtk-3-0 libgbm1 libxshmfence1 \
+    gcc \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy pyproject.toml 
-COPY backend/pyproject.toml ./
+# Copy requirements file
+COPY backend/requirements.txt .
 
-# Install dependencies
-RUN pip install -e .
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers
-RUN pip install playwright scikit-learn && playwright install chromium
+# Copy application code
+COPY backend/ .
 
-# Copy source code
-COPY backend/app ./app
+# Create directory for logs and company logos
+RUN mkdir -p logs logos/company_logos
 
 # Set environment variables
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    DATABASE_URL="postgresql://postgres:postgres@db:5432/janus"
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
 
-# Expose the port
+# Expose API port
 EXPOSE 8000
 
-# Set entrypoint
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--proxy-headers"]
+# Run the application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

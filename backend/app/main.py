@@ -1,234 +1,133 @@
-# main.py
-from fastapi import FastAPI, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-from typing import List, Optional
-from datetime import datetime
-import asyncio
-import os
+from fastapi.responses import JSONResponse
 import logging
+import os
+import time
+from typing import List
+import json
 
-from app.database import get_db, init_db
-from app.models import Job as DBJob, Company as DBCompany, Base
-from app.schemas import Job, JobCreate, Company, CompanyCreate, PaginatedResponse, JobListingStats
-from app.crud import (
-    get_jobs,
-    get_job,
-    create_job,
-    update_job,
-    delete_job,
-    get_companies,
-    get_company,
-    create_company,
-    update_company,
-    delete_company,
-    get_jobs_with_pagination,
-    get_jobs_since_timestamp,
-    get_jobs_stats
+from .api.api import api_router
+from .database import engine, Base, get_db
+from .websocket import manager
+from sqlalchemy.orm import Session
+from . import crud
+from .db_init import init_db  # Import the init_db function
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
-# from app.scheduler import ScraperScheduler
-# from app.ml.processor import MLProcessor
+logger = logging.getLogger("janus-api")
 
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi import Depends, HTTPException, status
+# Create database tables - with validation
+if not init_db():
+    logger.warning("Database tables may not have been created correctly")
+else:
+    logger.info("Database tables created successfully")
 
+# Get allowed origins from environment variable, or use default
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS", 
+    "http://localhost:3000,http://localhost:8000"
+).split(",")
+
+# Create FastAPI app
 app = FastAPI(
     title="Janus API",
-    description="API for Janus Internship Tracker",
+    description="API for Janus - Internship & Job Tracker",
     version="0.1.0",
 )
 
-# CORS middleware to allow cross-origin requests from frontend
-origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Global scheduler and processor instances
-scraper_scheduler = None
-ml_processor = None
+# Add API router
+app.include_router(api_router, prefix="/api")
 
-# Initialize database and start background tasks
-@app.on_event("startup")
-async def startup():
-    global scraper_scheduler, ml_processor
-    
-    # Initialize database
-    init_db()
-    
-    # Start scheduler and processor if not running in testing mode
-    # if os.environ.get("TESTING") != "true":
-        # Start scraper scheduler in background
-        # scraper_scheduler = ScraperScheduler()
-        # asyncio.create_task(scraper_scheduler.start())
-        
-        # Start ML processor in background
-        # ml_processor = MLProcessor()
-        # asyncio.create_task(ml_processor.start())
+# Add request processing time middleware
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+    return response
 
-# Shutdown background tasks
-@app.on_event("shutdown")
-async def shutdown():
-    global scraper_scheduler, ml_processor
-    
-    # Stop scheduler if running
-    if scraper_scheduler:
-        scraper_scheduler.stop()
-    
-    # Stop ML processor if running
-    if ml_processor:
-        ml_processor.stop()
+# Add global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error. Please try again later."},
+    )
 
-# Jobs endpoints
-@app.get("/jobs", response_model=PaginatedResponse[Job])
-def read_jobs(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=100),
-    category: Optional[str] = Query(None, regex="^(software|hardware|all)$"),
-    since: Optional[str] = None,
-    db: Session = Depends(get_db)
-):
-    """
-    Get a paginated list of jobs.
-    
-    - **page**: Page number, starting from 1
-    - **page_size**: Number of items per page (max 100)
-    - **category**: Filter by category (software, hardware, all)
-    - **since**: ISO timestamp to get jobs added since a specific time
-    """
-    logger = logging.getLogger(__name__)
-    logger.info(f"API request: /jobs with params page={page}, page_size={page_size}, category={category}, since={since}")
-    
+# WebSocket endpoint
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
+    await manager.connect(websocket)
     try:
-        if since:
-            # Try to parse the timestamp
+        # Send initial data on connection
+        stats = crud.get_job_statistics(db)
+        await manager.send_personal_message(
+            {
+                "event": "connected",
+                "data": {
+                    "message": "Connected to Janus WebSocket",
+                    "stats": stats
+                }
+            },
+            websocket
+        )
+        
+        # Listen for messages
+        while True:
+            data = await websocket.receive_text()
+            
+            # Parse message
             try:
-                # Handle different timestamp formats
-                if 'Z' in since:
-                    since_timestamp = datetime.fromisoformat(since.replace('Z', '+00:00'))
-                elif 'T' in since and '+' not in since and '-' in since:
-                    since_timestamp = datetime.fromisoformat(since + '+00:00')
-                else:
-                    since_timestamp = datetime.fromisoformat(since)
+                message = json.loads(data)
+                event = message.get("event")
                 
-                logger.info(f"Parsed timestamp: {since_timestamp}")
-            except ValueError as e:
-                logger.error(f"Invalid timestamp format: {since} - {str(e)}")
-                raise HTTPException(status_code=400, detail=f"Invalid timestamp format: {str(e)}")
+                # Handle different event types
+                if event == "ping":
+                    await manager.send_personal_message({"event": "pong"}, websocket)
+                
+                elif event == "subscribe:jobs":
+                    # Client is subscribing to job updates
+                    # You can store subscription info here if needed
+                    await manager.send_personal_message(
+                        {"event": "subscribed", "channel": "jobs"},
+                        websocket
+                    )
+                
+            except json.JSONDecodeError:
+                logger.warning(f"Invalid JSON received: {data}")
             
-            # Get jobs since the specified timestamp
-            jobs = get_jobs_since_timestamp(db, since_timestamp, category)
-            
-            # Return as a paginated response
-            total = len(jobs)
-            logger.info(f"Returning {total} jobs since {since_timestamp}")
-            return PaginatedResponse(
-                items=jobs,
-                total=total,
-                page=1,
-                page_size=total,
-                total_pages=1
-            )
-        else:
-            # Get paginated jobs
-            result = get_jobs_with_pagination(db, page, page_size, category)
-            logger.info(f"Returning paginated response with {len(result.items)} items")
-            return result
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
     except Exception as e:
-        logger.error(f"Error fetching jobs: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-@app.get("/jobs/{job_id}", response_model=Job)
-def read_job(job_id: int, db: Session = Depends(get_db)):
-    """Get a specific job by ID"""
-    db_job = get_job(db, job_id)
-    if db_job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return db_job
-
-@app.post("/jobs", response_model=Job)
-def create_job_api(job: JobCreate, db: Session = Depends(get_db)):
-    """Create a new job (admin only)"""
-    return create_job(db=db, job=job)
-
-@app.delete("/jobs/{job_id}", response_model=Job)
-def delete_job_api(job_id: int, db: Session = Depends(get_db)):
-    """Delete a job (admin only)"""
-    db_job = get_job(db, job_id)
-    if db_job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return delete_job(db=db, job_id=job_id)
-
-# Companies endpoints
-@app.get("/companies", response_model=List[Company])
-def read_companies(db: Session = Depends(get_db)):
-    """Get all companies"""
-    return get_companies(db)
-
-@app.get("/companies/{company_id}", response_model=Company)
-def read_company(company_id: int, db: Session = Depends(get_db)):
-    """Get a specific company by ID"""
-    db_company = get_company(db, company_id)
-    if db_company is None:
-        raise HTTPException(status_code=404, detail="Company not found")
-    return db_company
-
-@app.post("/companies", response_model=Company)
-def create_company_api(company: CompanyCreate, db: Session = Depends(get_db)):
-    """Create a new company (admin only)"""
-    return create_company(db=db, company=company)
-
-@app.delete("/companies/{company_id}", response_model=Company)
-def delete_company_api(company_id: int, db: Session = Depends(get_db)):
-    """Delete a company (admin only)"""
-    db_company = get_company(db, company_id)
-    if db_company is None:
-        raise HTTPException(status_code=404, detail="Company not found")
-    return delete_company(db=db, company_id=company_id)
-
-# Stats endpoint
-@app.get("/stats", response_model=JobListingStats)
-def read_stats(db: Session = Depends(get_db)):
-    """Get job listing statistics"""
-    return get_jobs_stats(db)
+        logger.error(f"WebSocket error: {str(e)}")
+        manager.disconnect(websocket)
 
 # Health check endpoint
 @app.get("/health")
-def health_check():
-    """Health check endpoint"""
+async def health_check():
     return {"status": "ok", "version": "0.1.0"}
 
-security = HTTPBearer()
+# Documentation endpoints
+@app.get("/", include_in_schema=False)
+async def root():
+    return {"message": "Welcome to Janus API. Visit /docs for API documentation."}
 
-def verify_admin_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    admin_token = os.getenv("ADMIN_API_TOKEN")
-    if not admin_token or credentials.credentials != admin_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    return credentials.credentials
-
-# Manual scrape trigger endpoint (admin only)
-# @app.post("/admin/trigger-scrape")
-# async def trigger_scrape(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-#     """Trigger a manual scrape (admin only)"""
-#     from app.scraper.manager import run_scrapers
-    
-#     # Run scrapers in background
-#     background_tasks.add_task(run_scrapers, db)
-    
-#     return {"status": "Scrape job started"}
-
-# Manual ML processing trigger endpoint (admin only)
-# @app.post("/admin/trigger-ml-processing")
-# async def trigger_ml_processing(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-#     """Trigger manual ML processing (admin only)"""
-#     from app.ml.processor import MLProcessor
-    
-#     # Run ML processing in background
-#     processor = MLProcessor()
-#     background_tasks.add_task(processor._process_jobs)
-    
-#     return {"status": "ML processing job started"}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

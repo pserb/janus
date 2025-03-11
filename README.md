@@ -21,12 +21,12 @@ Janus is a hybrid application designed to help university students find software
 
 2. Launch the application:
    ```bash
-   docker compose up -d
+   ./scripts/start.sh
    ```
 
 3. Seed the database with sample data:
    ```bash
-   docker compose exec backend python -m app.cli seed
+   ./scripts/seed.sh
    ```
 
 4. Access the application:
@@ -57,8 +57,7 @@ Make changes to the backend code in the `backend/app` directory. After making ch
 
 ```bash
 # Rebuild and restart just the backend
-docker compose build backend
-docker compose up -d backend
+./scripts/restart_backend.sh
 ```
 
 #### CLI Commands
@@ -67,13 +66,19 @@ The backend includes useful CLI commands for management:
 
 ```bash
 # Seed database with sample data
-docker compose exec backend python -m app.cli seed
+./scripts/seed.sh
 
 # Run job scrapers manually
-docker compose exec backend python -m app.cli scrape
+./scripts/scrape.sh
 
-# Run ML processor manually to summarize job requirements
-docker compose exec backend python -m app.cli process
+# Process job requirements
+./scripts/process.sh
+
+# Fetch company logos
+./scripts/fetch_logos.sh
+
+# View job statistics
+./scripts/stats.sh
 ```
 
 ### Frontend Development
@@ -82,23 +87,22 @@ Make changes to the frontend code in the `frontend` directory. After making chan
 
 ```bash
 # Rebuild and restart just the frontend
-docker compose build frontend
-docker compose up -d frontend
+./scripts/restart_frontend.sh
 ```
 
 ### Checking Logs
 
 ```bash
 # View logs from all services
-docker compose logs
+./scripts/logs.sh
 
 # View logs from a specific service
-docker compose logs frontend
-docker compose logs backend
-docker compose logs db
+./scripts/logs.sh frontend
+./scripts/logs.sh backend
+./scripts/logs.sh db
 
 # Follow logs in real-time
-docker compose logs -f
+./scripts/logs.sh -f
 ```
 
 ## 📂 Project Structure
@@ -118,6 +122,12 @@ janus/
 │   │   ├── schemas.py  # Pydantic schemas
 │   │   ├── crud.py     # Database operations
 │   │   └── main.py     # API endpoints
+├── scripts/            # Utility scripts
+│   ├── start.sh        # Start the application
+│   ├── seed.sh         # Seed the database
+│   ├── scrape.sh       # Run scrapers
+│   └── ...             # Other utility scripts
+├── logos/              # Company logos storage
 └── docker-compose.yml  # Docker setup
 ```
 
@@ -135,16 +145,37 @@ janus/
 
 ### Common Issues
 
+**Issue: PostgreSQL version incompatibility**
+
+If you see an error like:
+```
+FATAL: database files are incompatible with server
+DETAIL: The data directory was initialized by PostgreSQL version X, which is not compatible with this version Y
+```
+
+Solution:
+```bash
+# Remove existing PostgreSQL data volume
+./scripts/reset_db.sh
+```
+
+**Issue: Frontend container fails to start with "Cannot find module '/app/server.js'" error**
+
+Solution:
+```bash
+# Rebuild and restart frontend container
+./scripts/restart_frontend.sh
+```
+
 **Issue: Backend container fails to start with "uvicorn not found" error**
 
 This usually happens if dependencies are missing in the `pyproject.toml` file.
 
 Solution:
-1. Ensure `uvicorn` is listed in the dependencies in `backend/pyproject.toml`
+1. Ensure `uvicorn` is listed in the dependencies in `backend/requirements.txt`
 2. Rebuild the backend container:
    ```bash
-   docker compose build --no-cache backend
-   docker compose up -d
+   ./scripts/restart_backend.sh --rebuild
    ```
 
 **Issue: Frontend shows IndexedDB errors**
@@ -153,11 +184,10 @@ This can happen due to transaction conflicts in the IndexedDB initialization.
 
 Solution:
 1. Check the database initialization in `frontend/lib/db.ts`
-2. Ensure there are no nested transactions in the `upgrade` handler
+2. Clear browser cache and try again
 3. Rebuild the frontend:
    ```bash
-   docker compose build frontend
-   docker compose up -d frontend
+   ./scripts/restart_frontend.sh --rebuild
    ```
 
 **Issue: API connection errors (404 Not Found or Connection Refused)**
@@ -169,21 +199,9 @@ Solution:
    environment:
      - NEXT_PUBLIC_API_URL=http://backend:8000
    ```
-3. Rebuild and restart:
+3. Restart the application:
    ```bash
-   docker compose down
-   docker compose up -d
-   ```
-
-**Issue: 422 Unprocessable Entity errors**
-
-This typically happens when API validation fails.
-
-Solution:
-Check the API validation constraints in `backend/app/main.py` and ensure the frontend respects these limits:
-   ```bash
-   # View backend logs to see the specific validation error
-   docker compose logs backend
+   ./scripts/restart.sh
    ```
 
 ## 📖 API Documentation
@@ -197,7 +215,7 @@ The API documentation is available at [http://localhost:8000/docs](http://localh
 Run the scrapers manually to fetch new job listings:
 
 ```bash
-docker compose exec backend python -m app.cli scrape
+./scripts/scrape.sh
 ```
 
 ### Automatic Updates
@@ -215,6 +233,39 @@ The application uses the following environment variables:
 - `DATABASE_URL`: PostgreSQL connection string (default: `postgresql://postgres:postgres@db:5432/janus`)
 - `ADMIN_API_TOKEN`: Token for admin API endpoints (optional)
 - `ALLOWED_ORIGINS`: CORS allowed origins (default: `http://localhost:3000`)
+
+## 🚀 Deployment
+
+For deploying to a production environment:
+
+```bash
+# Build production images
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build
+
+# Deploy application
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+## 🛠️ Development Tools
+
+The project includes several development tools:
+
+1. **Database Management**:
+   - Reset database: `./scripts/reset_db.sh`
+   - Backup database: `./scripts/backup_db.sh`
+   - Restore database: `./scripts/restore_db.sh <backup_file>`
+
+2. **Scraper Tools**:
+   - Test specific scraper: `./scripts/test_scraper.sh <scraper_name>`
+   - Run all scrapers: `./scripts/scrape.sh`
+
+3. **ML Tools**:
+   - Process job requirements: `./scripts/process.sh`
+   - Fetch company logos: `./scripts/fetch_logos.sh`
+
+4. **Frontend Tools**:
+   - Run linting: `./scripts/lint_frontend.sh`
+   - Run type checking: `./scripts/typecheck_frontend.sh`
 
 ## 🤝 Contributing
 

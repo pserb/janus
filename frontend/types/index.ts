@@ -11,7 +11,7 @@ export interface Job {
   description: string;
   requirements_summary: string;
   is_active: boolean;
-  is_new: number; // Changed from boolean to number for IndexedDB compatibility
+  is_new: number;
 }
 
 export interface Company {
