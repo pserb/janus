@@ -26,8 +26,8 @@ from app.crud import (
     get_jobs_since_timestamp,
     get_jobs_stats
 )
-from app.scheduler import ScraperScheduler
-from app.ml.processor import MLProcessor
+# from app.scheduler import ScraperScheduler
+# from app.ml.processor import MLProcessor
 
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import Depends, HTTPException, status
@@ -61,14 +61,14 @@ async def startup():
     init_db()
     
     # Start scheduler and processor if not running in testing mode
-    if os.environ.get("TESTING") != "true":
+    # if os.environ.get("TESTING") != "true":
         # Start scraper scheduler in background
-        scraper_scheduler = ScraperScheduler()
-        asyncio.create_task(scraper_scheduler.start())
+        # scraper_scheduler = ScraperScheduler()
+        # asyncio.create_task(scraper_scheduler.start())
         
         # Start ML processor in background
-        ml_processor = MLProcessor()
-        asyncio.create_task(ml_processor.start())
+        # ml_processor = MLProcessor()
+        # asyncio.create_task(ml_processor.start())
 
 # Shutdown background tasks
 @app.on_event("shutdown")
@@ -211,24 +211,24 @@ def verify_admin_token(credentials: HTTPAuthorizationCredentials = Depends(secur
     return credentials.credentials
 
 # Manual scrape trigger endpoint (admin only)
-@app.post("/admin/trigger-scrape")
-async def trigger_scrape(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    """Trigger a manual scrape (admin only)"""
-    from app.scraper.manager import run_scrapers
+# @app.post("/admin/trigger-scrape")
+# async def trigger_scrape(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+#     """Trigger a manual scrape (admin only)"""
+#     from app.scraper.manager import run_scrapers
     
-    # Run scrapers in background
-    background_tasks.add_task(run_scrapers, db)
+#     # Run scrapers in background
+#     background_tasks.add_task(run_scrapers, db)
     
-    return {"status": "Scrape job started"}
+#     return {"status": "Scrape job started"}
 
 # Manual ML processing trigger endpoint (admin only)
-@app.post("/admin/trigger-ml-processing")
-async def trigger_ml_processing(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    """Trigger manual ML processing (admin only)"""
-    from app.ml.processor import MLProcessor
+# @app.post("/admin/trigger-ml-processing")
+# async def trigger_ml_processing(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+#     """Trigger manual ML processing (admin only)"""
+#     from app.ml.processor import MLProcessor
     
-    # Run ML processing in background
-    processor = MLProcessor()
-    background_tasks.add_task(processor._process_jobs)
+#     # Run ML processing in background
+#     processor = MLProcessor()
+#     background_tasks.add_task(processor._process_jobs)
     
-    return {"status": "ML processing job started"}
+#     return {"status": "ML processing job started"}
