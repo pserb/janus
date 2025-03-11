@@ -43,6 +43,15 @@ companies = [
     "JD",    # JD.com
     "BIDU",  # Baidu
     "TCEHY", # Tencent
+    "AAPL",  # Apple
+    "AMD",  # AMD
+    "AMZN",  # Amazon
+    "CDNS",  # Cadence Design Systems
+    "GOOGL",  # Google
+    "MSFT",  # Microsoft
+    "SNAP",  # Snap-on
+    "TSLA",  # Tesla
+    "WDC",  # Western Digital
 ]
 
 # Create directory for saved SVGs

@@ -50,63 +50,103 @@ export function createUniqueId(): string {
  */
 export function getCompanyTicker(companyName: string): string | null {
   if (!companyName) return null;
-  
+
   // Normalize the company name (lowercase, remove Inc., Corp., etc.)
   const normalizedName = companyName.toLowerCase()
     .replace(/\binc\.?\b|\bcorp\.?\b|\bco\.?\b|\bcompany\b|\bcorporation\b|\blimited\b|\bltd\.?\b/g, '')
     .trim();
-  
+
   // Common company name to ticker mappings
   const companyMap: Record<string, string> = {
-    'apple': 'AAPL',
-    'microsoft': 'MSFT',
-    'google': 'GOOGL',
+    'adobe': 'ADBE',
+    'advanced micro devices': 'AMD',
+    'airbnb': 'ABNB',
+    'alibaba': 'BABA',
     'alphabet': 'GOOGL',
     'amazon': 'AMZN',
-    'meta': 'META',
+    'amd': 'AMD',
+    'analog devices': 'ADI',
+    'apple': 'AAPL',
+    'applied materials': 'AMAT',
+    'atlassian': 'TEAM',
+    'autodesk': 'ADSK',
+    'baidu': 'BIDU',
+    'block': 'SQ',
+    'booking holdings': 'BKNG',
+    'broadcom': 'AVGO',
+    'c3.ai': 'AI',
+    'cadence design systems': 'CDNS',
+    'cisco': 'CSCO',
+    'cloudflare': 'NET',
+    'coinbase': 'COIN',
+    'crowdstrike': 'CRWD',
+    'datadog': 'DDOG',
+    'dell': 'DELL',
+    'digital ocean': 'DOCN',
+    'docusign': 'DOCU',
+    'doordash': 'DASH',
+    'ebay': 'EBAY',
+    'expedia': 'EXPE',
     'facebook': 'META',
-    'tesla': 'TSLA',
-    'nvidia': 'NVDA',
-    'netflix': 'NFLX',
-    'adobe': 'ADBE',
-    'salesforce': 'CRM',
-    'oracle': 'ORCL',
+    'fortinet': 'FTNT',
+    'github': 'MSFT',
+    'google': 'GOOGL',
+    'hewlett packard enterprise': 'HPE',
+    'hp': 'HPQ',
     'ibm': 'IBM',
     'intel': 'INTC',
-    'amd': 'AMD',
-    'cisco': 'CSCO',
-    'paypal': 'PYPL',
-    'uber': 'UBER',
-    'lyft': 'LYFT',
-    'snap': 'SNAP',
-    'square': 'SQ',
-    'block': 'SQ',
-    'shopify': 'SHOP',
-    'zoom': 'ZM',
-    'pinterest': 'PINS',
-    'spotify': 'SPOT',
-    'coinbase': 'COIN',
-    'snowflake': 'SNOW',
-    'palantir': 'PLTR',
-    'roblox': 'RBLX',
-    'unity': 'U',
-    'c3.ai': 'AI',
-    'atlassian': 'TEAM',
-    'doordash': 'DASH',
-    'roku': 'ROKU',
-    'alibaba': 'BABA',
+    'intuit': 'INTU',
     'jd.com': 'JD',
-    'baidu': 'BIDU',
+    'lam research': 'LRCX',
+    'linkedin': 'MSFT',
+    'lyft': 'LYFT',
+    'match group': 'MTCH',
+    'meta': 'META',
+    'micron technology': 'MU',
+    'microsoft': 'MSFT',
+    'mongodb': 'MDB',
+    'netflix': 'NFLX',
+    'nvidia': 'NVDA',
+    'okta': 'OKTA',
+    'oracle': 'ORCL',
+    'palo alto networks': 'PANW',
+    'palantir': 'PLTR',
+    'paypal': 'PYPL',
+    'pinterest': 'PINS',
+    'qualcomm': 'QCOM',
+    'roblox': 'RBLX',
+    'roku': 'ROKU',
+    'salesforce': 'CRM',
+    'seagate technology': 'STX',
+    'servicenow': 'NOW',
+    'shopify': 'SHOP',
+    'snap': 'SNAP',
+    'snowflake': 'SNOW',
+    'splunk': 'SPLK',
+    'spotify': 'SPOT',
+    'square': 'SQ',
+    'synopsys': 'SNPS',
     'tencent': 'TCEHY',
+    'tesla': 'TSLA',
+    'texas instruments': 'TXN',
+    'twilio': 'TWLO',
+    'twitter': 'TWTR',
+    'uber': 'UBER',
+    'unity': 'U',
+    'vmware': 'VMW',
+    'western digital': 'WDC',
+    'workday': 'WDAY',
+    'zoom': 'ZM',
+    'zscaler': 'ZS'
   };
-  
+
   // Check for matches
   for (const [name, ticker] of Object.entries(companyMap)) {
     if (normalizedName.includes(name)) {
       return ticker;
     }
   }
-  
+
   // If no match found
   return null;
 }
@@ -120,11 +160,11 @@ type BadgeVariantType = NonNullable<Parameters<typeof badgeVariants>[0]>['varian
 export const BADGE_VARIANTS: Record<string, BadgeVariantType> = {
   // Status badges
   NEW: 'green',
-  
+
   // Job categories
   SOFTWARE: 'indigo-subtle',
   HARDWARE: 'amber-subtle',
-  
+
   // Default fallback
   DEFAULT: 'secondary'
 } as const;
@@ -244,8 +284,8 @@ export const ErrorIcon = () => (
 );
 
 export const RetryButton = ({ onClick }: { onClick: () => void }) => (
-  <button 
-    onClick={onClick} 
+  <button
+    onClick={onClick}
     className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,box-shadow] h-9 px-4 py-2 has-[>svg]:px-3 bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80"
   >
     <RefreshCw className="h-4 w-4 mr-2" />
