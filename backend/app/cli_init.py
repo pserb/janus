@@ -29,6 +29,7 @@ REAL_TECH_COMPANIES = [
         "website": "https://www.apple.com",
         "career_page_url": "https://jobs.apple.com/en-us/search?team=internships-STDNT-INTRN",
         "ticker": "AAPL",
+        "scrape_frequency_hours": 12.0,  # Check twice a day
     },
     {
         "name": "Amazon",
@@ -45,8 +46,9 @@ REAL_TECH_COMPANIES = [
     {
         "name": "NVIDIA",
         "website": "https://www.nvidia.com",
-        "career_page_url": "https://www.nvidia.com/en-us/about-nvidia/careers/university-recruiting/",
+        "career_page_url": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite",
         "ticker": "NVDA",
+        "scrape_frequency_hours": 12.0,  # Check twice a day
     },
     {
         "name": "IBM",
@@ -71,6 +73,37 @@ REAL_TECH_COMPANIES = [
         "website": "https://www.salesforce.com",
         "career_page_url": "https://www.salesforce.com/company/careers/university-recruiting/",
         "ticker": "CRM",
+    },
+    # Adding more top tech companies for internships
+    {
+        "name": "Adobe",
+        "website": "https://www.adobe.com",
+        "career_page_url": "https://www.adobe.com/careers/university.html",
+        "ticker": "ADBE",
+    },
+    {
+        "name": "Qualcomm",
+        "website": "https://www.qualcomm.com",
+        "career_page_url": "https://www.qualcomm.com/company/careers/students",
+        "ticker": "QCOM",
+    },
+    {
+        "name": "Oracle",
+        "website": "https://www.oracle.com",
+        "career_page_url": "https://www.oracle.com/corporate/careers/students-grads/",
+        "ticker": "ORCL",
+    },
+    {
+        "name": "Cisco",
+        "website": "https://www.cisco.com",
+        "career_page_url": "https://www.cisco.com/c/en/us/about/careers/working-at-cisco/students-and-new-graduate-programs.html",
+        "ticker": "CSCO",
+    },
+    {
+        "name": "Texas Instruments",
+        "website": "https://www.ti.com",
+        "career_page_url": "https://careers.ti.com/job-search?from=0&s=1&rk=29",
+        "ticker": "TXN",
     },
 ]
 
@@ -111,6 +144,20 @@ JOB_BOARD_SOURCES = [
         "crawl_frequency_minutes": 180,
         "priority": 2,
     },
+    {
+        "name": "LinkedIn Software New Grad",
+        "url": "https://www.linkedin.com/jobs/search/?keywords=software%20new%20grad&sortBy=DD",
+        "crawler_type": "linkedin",
+        "crawl_frequency_minutes": 60,
+        "priority": 1,
+    },
+    {
+        "name": "LinkedIn Hardware New Grad",
+        "url": "https://www.linkedin.com/jobs/search/?keywords=hardware%20new%20grad&sortBy=DD",
+        "crawler_type": "linkedin",
+        "crawl_frequency_minutes": 60,
+        "priority": 1,
+    },
 ]
 
 
@@ -127,7 +174,9 @@ def init_sources():
             # Check if company already exists
             existing_company = crud.get_company_by_name(db, company_data["name"])
             if existing_company:
-                logger.info(f"Company already exists: {company_data['name']}")
+                logger.info(f"Updating existing company: {company_data['name']}")
+                # Update company with new data
+                crud.update_company(db, existing_company.id, company_data)
                 continue
 
             # Create company
